@@ -3,85 +3,213 @@
 <head>
     <meta charset="UTF-8">
     <title>Universal Gemini Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+        #chatContainer {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #inputArea {
+            display: flex;
+            margin-top: 15px;
+        }
+        #promptInput {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px 0 0 4px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            border-radius: 0 4px 4px 0;
+            font-size: 16px;
+            margin-left: -1px; /* Overlap border */
+        }
+        #newChatBtn {
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        #chatOutput {
+            border: 1px solid #ddd;
+            padding: 15px;
+            min-height: 300px;
+            max-height: 50vh;
+            overflow-y: auto;
+            margin-top: 15px;
+            border-radius: 4px;
+            background-color: #fff;
+        }
+        .user-message {
+            margin-bottom: 15px;
+            padding: 8px 10px;
+            background-color: #e6f0ff;
+            border-radius: 8px;
+            text-align: right;
+        }
+        .model-message {
+            margin-bottom: 15px;
+            padding: 8px 10px;
+            background-color: #eafaea;
+            border-radius: 8px;
+            text-align: left;
+        }
+        .message-role {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #0056b3;
+        }
+        .model-role {
+            color: #28a745;
+        }
+    </style>
 </head>
 <body>
 
-    <h1>Chat with Gemini (Securely!)</h1>
-    
-    <input type="text" id="promptInput" placeholder="Ask Gemini anything..." style="width: 80%;">
-    <button onclick="sendMessage()">Send</button>
+    <div id="chatContainer">
+        <h1>Chat with Gemini (Securely!)</h1>
+        
+        <button id="newChatBtn" onclick="startNewChat()">Start New Chat</button> 
 
-    <p id="response" style="margin-top: 20px; border: 1px solid #ccc; padding: 10px; white-space: pre-wrap;">Response will appear here...</p>
+        <div id="inputArea">
+            <input type="text" id="promptInput" placeholder="Ask Gemini anything...">
+            <button id="sendBtn" onclick="sendMessage()">Send</button>
+        </div>
+
+        <div id="chatOutput">Start a conversation...</div>
+    </div>
 
     <script>
         // *** CORRECT VERCEL SECURE PROXY ENDPOINT ***
         const PROXY_URL = "https://gemini-api-proxy-xi-two.vercel.app/api/gemini"; 
-        
-        // CRITICAL FIX: Setting the supported model name
         const MODEL_NAME = "gemini-2.5-flash"; 
+
+        // 1. CONVERSATION HISTORY FIX: Global history array (The "state")
+        let chatHistory = [];
+
+        // 4. FORMATTING FIX: Simple Markdown-to-HTML conversion
+        function formatMarkdown(text) {
+            // Convert **bold** to <strong>
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // Convert list items to paragraphs (for simple rendering)
+            text = text.replace(/(\*|\-)\s+(.*)/g, '<p style="margin-left: 15px;">&bull; $2</p>');
+            // Convert simple newlines to <br>
+            text = text.replace(/\n/g, '<br>'); 
+            return text;
+        }
+
+        // Function to update the DOM with the full conversation history
+        function displayHistory() {
+            const chatOutput = document.getElementById('chatOutput');
+            chatOutput.innerHTML = ''; // Clear the output area
+
+            if (chatHistory.length === 0) {
+                 chatOutput.innerHTML = 'Start a conversation...';
+                 return;
+            }
+
+            chatHistory.forEach(message => {
+                const role = message.role;
+                const text = message.parts[0].text;
+
+                const chatEntry = document.createElement('div');
+                chatEntry.className = role === 'user' ? 'user-message' : 'model-message';
+                
+                let formattedText = formatMarkdown(text);
+                
+                chatEntry.innerHTML = `
+                    <span class="message-role ${role}-role">${role === 'user' ? 'You' : 'Gemini'}</span>
+                    <div>${formattedText}</div>
+                `;
+                
+                chatOutput.appendChild(chatEntry);
+            });
+            chatOutput.scrollTop = chatOutput.scrollHeight; // Scroll to bottom
+        }
+
+        // 2. NEW CHAT FUNCTION
+        function startNewChat() {
+            chatHistory = []; 
+            document.getElementById('promptInput').value = '';
+            displayHistory();
+            console.log("Chat history cleared. New session started.");
+        }
 
         async function sendMessage() {
             const promptInput = document.getElementById('promptInput');
-            const prompt = promptInput.value;
-            const responseElement = document.getElementById('response');
-            responseElement.textContent = "Waiting for response from secure proxy...";
+            const userPrompt = promptInput.value;
+            const chatOutput = document.getElementById('chatOutput');
 
-            if (!prompt) {
-                responseElement.textContent = "Please enter a message.";
-                return;
-            }
+            if (!userPrompt) return;
 
-            const requestBody = {
-                contents: [
-                    { parts: [{ text: prompt }] }
-                ],
-                model: MODEL_NAME 
-            };
+            // 1. Add user message to history
+            const userMessage = { role: "user", parts: [{ text: userPrompt }] };
+            chatHistory.push(userMessage);
+
+            promptInput.value = ''; // Clear the input field
+            displayHistory();
+            chatOutput.lastChild.innerHTML += '...thinking'; // Show typing indicator
 
             try {
+                // 1. Send the *full* chat history array
+                const requestBody = {
+                    contents: chatHistory, 
+                    model: MODEL_NAME 
+                };
+
                 const response = await fetch(PROXY_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody)
                 });
 
                 const data = await response.json();
+                let geminiMessageText = '';
 
-                if (response.ok) {
-                    if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
-                        const geminiText = data.candidates[0].content.parts[0].text;
-                        responseElement.textContent = geminiText;
-                        promptInput.value = ''; // Clear the input field after sending
-                    } else {
-                        responseElement.textContent = "Error: Could not get a valid response from the AI.";
-                    }
+                if (response.ok && data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+                    geminiMessageText = data.candidates[0].content.parts[0].text;
                 } else {
-                    responseElement.textContent = `Error from Proxy Server: ${data.error.message || data.error || response.statusText}`;
+                    geminiMessageText = `Error from Proxy: ${data.error ? data.error.message : response.statusText}`;
                 }
 
+                // 1. Add Gemini's reply/error to history
+                const geminiMessage = { role: "model", parts: [{ text: geminiMessageText }] };
+                chatHistory.push(geminiMessage);
 
             } catch (error) {
-                console.error('Fetch error:', error);
-                responseElement.textContent = `Network Error: Could not connect to the proxy server.`;
+                // Add network error to history
+                chatHistory.push({ role: "model", parts: [{ text: "Network Error: Could not reach proxy." }] });
             }
+            
+            // 1. Update the display with the final history
+            displayHistory(); 
         }
         
-        // >>>>>> NEW JAVASCRIPT FIX FOR ENTER KEY <<<<<<
+        // 3. ENTER KEY FIX: Attach a listener to the input field
         document.addEventListener('DOMContentLoaded', () => {
             const inputField = document.getElementById('promptInput');
-
-            // Attach a listener to the input field itself
             inputField.addEventListener('keypress', function (e) {
-                // Check if the key pressed is the Enter key (key code 13)
                 if (e.key === 'Enter') {
-                    e.preventDefault(); // Stop the default browser action (like reloading the page)
-                    sendMessage();      // Call your function
+                    e.preventDefault(); 
+                    sendMessage();      
                 }
             });
+            // Initial call to set up the display
+            displayHistory();
         });
-        // >>>>>> END NEW JAVASCRIPT FIX <<<<<<
     </script>
 </body>
 </html>
