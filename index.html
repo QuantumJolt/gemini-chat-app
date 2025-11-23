@@ -11,7 +11,7 @@
             background-color: #f4f4f9;
         }
         #chatContainer {
-            /* Increased Width */
+            /* Final Width */
             max-width: 1200px; 
             margin: 0 auto;
             background-color: white;
@@ -58,18 +58,18 @@
             border: 1px solid #ddd;
             padding: 15px;
             min-height: 300px;
-            /* Increased Height */
+            /* Final Height */
             max-height: 75vh; 
             overflow-y: auto;
             margin-top: 15px;
             border-radius: 4px;
             background-color: #fff;
-            line-height: 1.5; /* Slightly reduced overall line height */
+            line-height: 1.4; /* Tighter line height for overall readability */
         }
-        /* CRITICAL FIX FOR SPACING: Reduce margins on paragraphs inside chat output */
+        /* CRITICAL FIX: Remove all vertical margin from list items/paragraphs for tight spacing */
         #chatOutput p {
-            margin-top: 5px;
-            margin-bottom: 5px;
+            margin-top: 0;
+            margin-bottom: 0;
             padding: 0;
         }
         /* Styles for displaying conversation history */
@@ -126,7 +126,7 @@
             if (!text) return '';
             // Convert **bold** to <strong>
             text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            // CRITICAL FIX: Convert list items to paragraphs with minimal inline style
+            // Convert list items to paragraphs. Margins are handled by CSS #chatOutput p
             text = text.replace(/(\*|\-)\s+(.*)/g, '<p style="margin-left: 15px;">&bull; $2</p>');
             // Convert simple newlines to <br> 
             text = text.replace(/\n/g, '<br>'); 
