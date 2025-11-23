@@ -64,7 +64,13 @@
             margin-top: 15px;
             border-radius: 4px;
             background-color: #fff;
-            line-height: 1.6;
+            line-height: 1.5; /* Slightly reduced overall line height */
+        }
+        /* CRITICAL FIX FOR SPACING: Reduce margins on paragraphs inside chat output */
+        #chatOutput p {
+            margin-top: 5px;
+            margin-bottom: 5px;
+            padding: 0;
         }
         /* Styles for displaying conversation history */
         .user-message {
@@ -118,8 +124,11 @@
         // Function to convert Gemini's Markdown into basic HTML for display
         function formatMarkdown(text) {
             if (!text) return '';
+            // Convert **bold** to <strong>
             text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            text = text.replace(/(\*|\-)\s+(.*)/g, '<p style="margin-left: 15px; margin-top: 5px; margin-bottom: 5px;">&bull; $2</p>');
+            // CRITICAL FIX: Convert list items to paragraphs with minimal inline style
+            text = text.replace(/(\*|\-)\s+(.*)/g, '<p style="margin-left: 15px;">&bull; $2</p>');
+            // Convert simple newlines to <br> 
             text = text.replace(/\n/g, '<br>'); 
             return text;
         }
@@ -153,7 +162,7 @@
             chatOutput.scrollTop = chatOutput.scrollHeight; 
         }
         
-        // 🟢 COPY CHAT FUNCTION
+        // FUNCTION: Copies chat history to the clipboard
         function copyChatText() {
             if (chatHistory.length === 0) {
                 alert("The chat is empty!");
@@ -231,15 +240,14 @@
             displayHistory(); 
         }
         
-        // 🔑 ENTER KEY FIX: Attach a listener to the input field on load
+        // ENTER KEY FIX: Attach a listener to the input field on load
         document.addEventListener('DOMContentLoaded', () => {
             const inputField = document.getElementById('promptInput');
             
-            // Check if the input field exists before adding the listener
             if (inputField) {
                 inputField.addEventListener('keypress', function (e) {
                     if (e.key === 'Enter') {
-                        e.preventDefault(); // Stop the default browser action
+                        e.preventDefault(); 
                         sendMessage();      
                     }
                 });
