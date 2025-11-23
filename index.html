@@ -12,9 +12,11 @@
     <p id="response" style="margin-top: 20px; border: 1px solid #ccc; padding: 10px; white-space: pre-wrap;">Response will appear here...</p>
 
     <script>
-        // *** ACTUAL VERCELL SECURE PROXY ENDPOINT ***
+        // *** CORRECT VERCEL SECURE PROXY ENDPOINT ***
         const PROXY_URL = "https://gemini-api-proxy-xi-two.vercel.app/api/gemini"; 
-        const MODEL_NAME = "gemini-3.0-flash"; // Requested Model Update
+        
+        // >>>>>> CRITICAL FIX: Setting the supported model name <<<<<<
+        const MODEL_NAME = "gemini-2.5-flash"; 
 
         async function sendMessage() {
             const prompt = document.getElementById('promptInput').value;
@@ -23,17 +25,14 @@
 
             if (!prompt) return;
 
-            // The request body contains the data sent to the Vercel proxy
             const requestBody = {
                 contents: [
                     { parts: [{ text: prompt }] }
                 ],
-                // We send the model name in the body for the proxy to use
                 model: MODEL_NAME 
             };
 
             try {
-                // This call goes to your secure Vercel server, NOT the public internet
                 const response = await fetch(PROXY_URL, {
                     method: 'POST',
                     headers: {
@@ -44,20 +43,21 @@
 
                 const data = await response.json();
 
-                if (data.error) {
-                    responseElement.textContent = `Error: ${data.error.message || data.error}`;
-                } else if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
-                    // Display the generated text
-                    const geminiText = data.candidates[0].content.parts[0].text;
-                    responseElement.textContent = geminiText;
+                if (response.ok) {
+                    if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+                        const geminiText = data.candidates[0].content.parts[0].text;
+                        responseElement.textContent = geminiText;
+                    } else {
+                        responseElement.textContent = "Error: Could not get a valid response from the AI.";
+                    }
                 } else {
-                    responseElement.textContent = "Error: Could not get a valid response from the AI. Check console for details.";
-                    console.log("Raw Response:", data);
+                    responseElement.textContent = `Error from Proxy Server: ${data.error.message || data.error || response.statusText}`;
                 }
+
 
             } catch (error) {
                 console.error('Fetch error:', error);
-                responseElement.textContent = `Network Error: Could not connect to the proxy server. Please check your Vercel deployment.`;
+                responseElement.textContent = `Network Error: Could not connect to the proxy server.`;
             }
         }
     </script>
