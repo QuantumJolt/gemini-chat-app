@@ -1,6 +1,65 @@
-<h1>My Gemini App</h1>
-<p>Loading...</p>
-<script>
-  // This is where your front-end code (JavaScript) will go later. 
-  // It will call your secure proxy URL, not the Gemini API directly.
-</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Universal Gemini Chat</title>
+</head>
+<body>
+
+    <h1>Chat with Gemini (Securely!)</h1>
+    <input type="text" id="promptInput" placeholder="Ask Gemini anything..." style="width: 80%;">
+    <button onclick="sendMessage()">Send</button>
+    <p id="response" style="margin-top: 20px; border: 1px solid #ccc; padding: 10px; white-space: pre-wrap;">Response will appear here...</p>
+
+    <script>
+        // *** ACTUAL VERCELL SECURE PROXY ENDPOINT ***
+        const PROXY_URL = "https://gemini-api-proxy-xwkxeaall.vercel.app/api/gemini"; 
+        const MODEL_NAME = "gemini-3.0-flash"; // Requested Model Update
+
+        async function sendMessage() {
+            const prompt = document.getElementById('promptInput').value;
+            const responseElement = document.getElementById('response');
+            responseElement.textContent = "Waiting for response from secure proxy...";
+
+            if (!prompt) return;
+
+            // The request body contains the data sent to the Vercel proxy
+            const requestBody = {
+                contents: [
+                    { parts: [{ text: prompt }] }
+                ],
+                // We send the model name in the body for the proxy to use
+                model: MODEL_NAME 
+            };
+
+            try {
+                // This call goes to your secure Vercel server, NOT the public internet
+                const response = await fetch(PROXY_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    responseElement.textContent = `Error: ${data.error.message || data.error}`;
+                } else if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+                    // Display the generated text
+                    const geminiText = data.candidates[0].content.parts[0].text;
+                    responseElement.textContent = geminiText;
+                } else {
+                    responseElement.textContent = "Error: Could not get a valid response from the AI. Check console for details.";
+                    console.log("Raw Response:", data);
+                }
+
+            } catch (error) {
+                console.error('Fetch error:', error);
+                responseElement.textContent = `Network Error: Could not connect to the proxy server. Please check your Vercel deployment.`;
+            }
+        }
+    </script>
+</body>
+</html>
