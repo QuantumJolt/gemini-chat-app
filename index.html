@@ -6,28 +6,30 @@
 </head>
 <body>
 
-<h1>Chat with Gemini (Securely!)</h1>
-
-<form onsubmit="sendMessage(); return false;">
+    <h1>Chat with Gemini (Securely!)</h1>
+    
     <input type="text" id="promptInput" placeholder="Ask Gemini anything..." style="width: 80%;">
-    <button type="submit">Send</button> 
-</form>
+    <button onclick="sendMessage()">Send</button>
 
-<p id="response" style="margin-top: 20px; border: 1px solid #ccc; padding: 10px; white-space: pre-wrap;">Response will appear here...</p>
+    <p id="response" style="margin-top: 20px; border: 1px solid #ccc; padding: 10px; white-space: pre-wrap;">Response will appear here...</p>
 
     <script>
         // *** CORRECT VERCEL SECURE PROXY ENDPOINT ***
         const PROXY_URL = "https://gemini-api-proxy-xi-two.vercel.app/api/gemini"; 
         
-        // >>>>>> CRITICAL FIX: Setting the supported model name <<<<<<
+        // CRITICAL FIX: Setting the supported model name
         const MODEL_NAME = "gemini-2.5-flash"; 
 
         async function sendMessage() {
-            const prompt = document.getElementById('promptInput').value;
+            const promptInput = document.getElementById('promptInput');
+            const prompt = promptInput.value;
             const responseElement = document.getElementById('response');
             responseElement.textContent = "Waiting for response from secure proxy...";
 
-            if (!prompt) return;
+            if (!prompt) {
+                responseElement.textContent = "Please enter a message.";
+                return;
+            }
 
             const requestBody = {
                 contents: [
@@ -51,6 +53,7 @@
                     if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
                         const geminiText = data.candidates[0].content.parts[0].text;
                         responseElement.textContent = geminiText;
+                        promptInput.value = ''; // Clear the input field after sending
                     } else {
                         responseElement.textContent = "Error: Could not get a valid response from the AI.";
                     }
@@ -64,6 +67,21 @@
                 responseElement.textContent = `Network Error: Could not connect to the proxy server.`;
             }
         }
+        
+        // >>>>>> NEW JAVASCRIPT FIX FOR ENTER KEY <<<<<<
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputField = document.getElementById('promptInput');
+
+            // Attach a listener to the input field itself
+            inputField.addEventListener('keypress', function (e) {
+                // Check if the key pressed is the Enter key (key code 13)
+                if (e.key === 'Enter') {
+                    e.preventDefault(); // Stop the default browser action (like reloading the page)
+                    sendMessage();      // Call your function
+                }
+            });
+        });
+        // >>>>>> END NEW JAVASCRIPT FIX <<<<<<
     </script>
 </body>
 </html>
